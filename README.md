@@ -1,5 +1,5 @@
 # trabalho-de-cobertura
-Dimensioning of a Terrestrial Radioelectric Link:
+Sizing of a Terrestrial Radioelectric Link:
 * Research about DEM disponibilized by NASA's SRTM. [OK]
 * Research about the possible computational programs that are capable of importing and exporting DEM, as well as about how to obtain and the proper visualization of a coverage map.
 * Implement a script capable of importing topographic informations of a geographic region defined by latitude and longitude.
