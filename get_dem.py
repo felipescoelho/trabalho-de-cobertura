@@ -7,6 +7,7 @@ from math import ceil
 import numpy as np
 import wget
 import os
+import gdal_merge
 import pathlib
 import zipfile
 
@@ -86,22 +87,22 @@ cache_list = []
 if lat_dif != 0 and lon_dif != 0:  # getting many tiles in both directions
     for i in range(lon_dif+1):
         for j in range(lat_dif+1):
-            url_list.append([url_path + 'srtm_{}_{}.zip'.format(lon_aux[i],
-                            lat_aux[j])])
-            cache_list.append(['./cache/zip/srtm_{}_{}.zip'
-                              .format(lon_aux[i], lat_aux[j])])
+            url_list.append(url_path + 'srtm_{}_{}.zip'.format(lon_aux[i],
+                            lat_aux[j]))
+            cache_list.append('./cache/zip/srtm_{}_{}.zip'
+                              .format(lon_aux[i], lat_aux[j]))
 elif lat_dif != 0 and lon_dif == 0:  # getting many tiles in different lat
     for i in range(lat_dif+1):
-        url_list.append([url_path + 'srtm_{}_{}.zip'.format(east,
-                        lat_aux[i])])
-        cache_list.append(['./cache/zip/srtm_{}_{}.zip'
-                          .format(east, lat_aux[i])])
+        url_list.append(url_path + 'srtm_{}_{}.zip'.format(east,
+                        lat_aux[i]))
+        cache_list.append('./cache/zip/srtm_{}_{}.zip'
+                          .format(east, lat_aux[i]))
 elif lon_dif != 0 and lat_dif == 0:  # getting many tiles in different long
     for i in range(lon_dif+1):
-        url_list.append([url_path + 'srtm_{}_{}.zip'.format(lon_dif[i],
-                        south)])
-        cache_list.append(['./cache/zip/srtm_{}_{}.zip'.format(lon_dif[i],
-                          south)])
+        url_list.append(url_path + 'srtm_{}_{}.zip'.format(lon_aux[i],
+                        south))
+        cache_list.append('./cache/zip/srtm_{}_{}.zip'.format(lon_aux[i],
+                          south))
 else:
     url_list.append(url_path + 'srtm_{}_{}.zip'.format(east, south))
     cache_list.append('./cache/zip/srtm_{}_{}.zip'.format(east, south))
@@ -123,3 +124,13 @@ for i in cache_list:
     zip_ref.extract(i[-14:-4] + '.tif', './cache/')
     zip_ref.close()
     filename_list.append(i[-14:-4] + '.tif')
+
+# Creating a mosaic for case of more than one tile:
+n_tiles = len(filename_list)
+if n_tiles != 1:
+    files_to_mosaic = []
+    for i in filename_list:
+        files_to_mosaic.append('cache/' + i)
+    files_string = ' '.join(files_to_mosaic)
+    command = " -o cache/sector.tif -of gtiff " + files_string
+    gdal_merge.main(command.split(' '))
