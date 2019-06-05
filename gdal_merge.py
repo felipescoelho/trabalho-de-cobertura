@@ -352,7 +352,7 @@ def main(argv=None):
     quiet = 0
     names = []
     format = None
-    out_file = 'cache/out.tif'
+    out_file = 'out.tif'
 
     ulx = None
     psize_x = None
