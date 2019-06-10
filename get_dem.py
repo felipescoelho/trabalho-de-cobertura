@@ -58,7 +58,8 @@ out_tif = 'clipped.tif'
 #     east = rx_coord[1]
 #     west = tx_coord[1]
 
-bounds = (-22.83, -43.31, -23.01, -43.05)  # bounds = (NORTH, WEST, SOUTH, EAST)
+# bounds = (NORTH, WEST, SOUTH, EAST)
+bounds = (-22.83, -43.31, -23.01, -43.05)
 
 # Setting valeus for those of the map:
 north = ceil(abs((bounds[0]-60)/5))
