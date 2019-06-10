@@ -12,10 +12,19 @@ import os
 import gdal_merge
 import pathlib
 import zipfile
+import rasterio
+from rasterio.plot import show
+from rasterio.plot import show_hist
+from rasterio.mask import mask
+from shapely.geometry import box
+import geopandas as gpd
+from fiona.crs import from_epsg
+import pycrs
 
 
 url_path = 'http://srtm.csi.cgiar.org/wp-content/uploads/files/srtm_5x5/TIFF/'
 cache_path = './cache/'
+out_tif = 'clipped.tif'
 
 # print("Digite as coordenadas da antena transmissora:\n\n\
 #       (Coloque os valores no formato LATITUDE LONGITUDE)\n\
@@ -143,24 +152,130 @@ else:
 # Processing data:
 # ----------------------------------------------------------------------------
 # Open file GeoTIFF:
-data = gdal.Open(data_file)  # use GDAL to open the file and read as 2D array
-band = data.GetRasterBand(1)
-# getting NaN values:
-nodataval = band.GetNoDataValue()
 
-# Convert to a numpy array:
-data_array = data.ReadAsArray().astype(np.float)
+# data = gdal.Open(data_file)  # use GDAL to open the file and read as 2D array
+# band = data.GetRasterBand(1)
+# # getting NaN values:
+# nodataval = band.GetNoDataValue()
 
-# Replace missing values if necessary:
-if np.any(data_array == nodataval):
-    data_array[data_array == nodataval] = np.nan
-    data_array = data_array[::-1]
+# # Convert to a numpy array:
+# data_array = data.ReadAsArray().astype(np.float)
+
+# # Replace missing values if necessary:
+# if np.any(data_array == nodataval):
+#     data_array[data_array == nodataval] = np.nan
+#     data_array = data_array[::-1]
+
+# Mask data according to the antenna placement:
+
+# ----------------------------------------------------------------------------
+# creating a mask with coordenates:
+# if bounds[0] > bounds[2]:
+#     lat1 = bounds[0] + .002  # adds approx. 220 m
+#     lat2 = bounds[2] - .002
+# else:
+#     lat1 = bounds[2] + .002
+#     lat2 = bounds[0] - .002
+# if bounds[1] > bounds[3]:
+#     lon1 = bounds[1] + .002
+#     lon2 = bounds[3] - .002
+# else:
+#     lon1 = bounds[3] + .002
+#     lon2 = bounds[1] - .002
+# lat_center = (lat1+lat2)/2
+# lon_center = (lon1+lon2)/2
+
+# list_coord = [[lat2, lon1], [lat1, lon1], [lat1, lon2],
+#               [lat_center, lon_center], [lat2, lon2]]
+# list_coord = [[float(coord) for coord in pair] for pair in list_coord]
+
+# for i in list_coord:
+#     w = shapefile.Writer(shapefile.POLYGON)
+#     w.poly(parts=[list_coord])
+#     w.field('F_FLD', 'C', '40')
+#     w.field('S_FLD', 'C', '40')
+#     w.record('First', 'Polygon')
+#     w.save()
+# ----------------------------------------------------------------------------
+
+# open in raster read mode:
+data = rasterio.open(data_file)
+
+# plot the data:
+show((data, 1), cmap='gist_earth')
+
+# creating a bounding box with shapely:
+if bounds[0] > bounds[2]:
+    lat1 = bounds[0] + .002  # adds approx. 220 m
+    lat2 = bounds[2] - .002
+else:
+    lat1 = bounds[2] + .002
+    lat2 = bounds[0] - .002
+if bounds[1] > bounds[3]:
+    lon1 = bounds[1] + .002
+    lon2 = bounds[3] - .002
+else:
+    lon1 = bounds[3] + .002
+    lon2 = bounds[1] - .002
+minlon, minlat = lon2, lat2
+maxlon, maxlat = lon1, lat1
+bbox = box(minlon, minlat, maxlon, maxlat)
+
+# insert bbox into a GeoDataFrame:
+geo = gpd.GeoDataFrame({'geometry': bbox}, index=[0], crs=from_epsg(4326))
+
+# reproject into the same coordinate system as raster data
+geo = geo.to_crs(crs=data.crs.data)
+
+# need to get the coordinates of the geometry in such a form that rasterio
+# wants them:
+
+
+def getFeatures(gdf):
+    """ Function to parse features from GeoDataFrame in such a manner that
+    rasterio want them"""
+    import json
+    return [json.loads(gdf.to_json())['features'][0]['geometry']]
+
+# get the geometry coordinates by using the function:
+coords = getFeatures(geo)
+print(coords)
+
+# Clip raster with the polygon using the 'coords' variable that was created.
+# Clipping the raster can be done easily with the 'mask' function that was
+# imported in the from 'rasterio', and specifying 'clip=True'.
+
+out_img, out_transform = mask(data, shapes=coords, crop=True)
+
+# Next modify the metadata. Start by coipying the metadata from the original
+# data file.
+# copy the metadata:
+out_meta = data.meta.copy()
+print(out_meta)
+
+# Parse the EPSG value from the CRS so that a 'Proj4' string is created using
+# the PyCRS library.
+
+epsg_code = int(data.crs.data['init'][5:])
+print(epsg_code)
+
+# update the metadata with new dimensions, transform and CRS:
+out_meta.update({'driver': 'GTiff', 'height': out_img.shape[1],
+                 'width': out_img.shape[2], 'transform': out_transform,
+                 'crs': pycrs.parse.from_epsg_code(epsg_code).to_proj4()})
+
+# save the clipped raster to disk:
+with rasterio.open(out_tif, 'w', **out_meta) as dest:
+    dest.write(out_img)
+
+clipped = rasterio.open(out_tif)
+clipped_array = clipped.read(1)
 
 # Visualize data with matplotlib:
 # Plot out data with contour
 fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
-plt.contour(data_array, cmap='viridis', levels=list(range(0, 2000, 100)))
+plt.contour(clipped_array[::-1], cmap='terrain', levels=list(range(-500, 1200, 25)))
 plt.title('Elevation Contours')
 cbar = plt.colorbar()
 plt.gca().set_aspect('equal', adjustable='box')
@@ -168,7 +283,7 @@ plt.gca().set_aspect('equal', adjustable='box')
 # Plot out data with contourf
 fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
-plt.contourf(data_array, cmap='viridis', levels=list(range(0, 2000, 200)))
+plt.contourf(clipped_array[::-1], cmap='terrain', levels=list(range(-500, 1200, 25)))
 plt.title('Elevation Contours')
 cbar = plt.colorbar()
 plt.gca().set_aspect('equal', adjustable='box')
