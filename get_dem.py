@@ -168,42 +168,13 @@ else:
 #     data_array = data_array[::-1]
 
 # Mask data according to the antenna placement:
-
-# ----------------------------------------------------------------------------
-# creating a mask with coordenates:
-# if bounds[0] > bounds[2]:
-#     lat1 = bounds[0] + .002  # adds approx. 220 m
-#     lat2 = bounds[2] - .002
-# else:
-#     lat1 = bounds[2] + .002
-#     lat2 = bounds[0] - .002
-# if bounds[1] > bounds[3]:
-#     lon1 = bounds[1] + .002
-#     lon2 = bounds[3] - .002
-# else:
-#     lon1 = bounds[3] + .002
-#     lon2 = bounds[1] - .002
-# lat_center = (lat1+lat2)/2
-# lon_center = (lon1+lon2)/2
-
-# list_coord = [[lat2, lon1], [lat1, lon1], [lat1, lon2],
-#               [lat_center, lon_center], [lat2, lon2]]
-# list_coord = [[float(coord) for coord in pair] for pair in list_coord]
-
-# for i in list_coord:
-#     w = shapefile.Writer(shapefile.POLYGON)
-#     w.poly(parts=[list_coord])
-#     w.field('F_FLD', 'C', '40')
-#     w.field('S_FLD', 'C', '40')
-#     w.record('First', 'Polygon')
-#     w.save()
 # ----------------------------------------------------------------------------
 
 # open in raster read mode:
 data = rasterio.open(data_file)
 
 # plot the data:
-show((data, 1), cmap='gist_earth')
+# show((data, 1), cmap='gist_earth')
 
 # creating a bounding box with shapely:
 if bounds[0] > bounds[2]:
@@ -271,7 +242,14 @@ with rasterio.open(out_tif, 'w', **out_meta) as dest:
     dest.write(out_img)
 
 clipped = rasterio.open(out_tif)
+nodataval = clipped.get_nodatavals()
 clipped_array = clipped.read(1)
+
+# Eliminating nodatavalues:
+if np.any(data_array == nodataval):
+    data_array[data_array == nodataval] = np.nan
+    data_array = data_array[::-1]
+
 import pdb; pdb.set_trace()
 # Visualize data with matplotlib:
 # Plot out data with contour
@@ -292,3 +270,5 @@ plt.title('Elevation Contours')
 cbar = plt.colorbar()
 plt.gca().set_aspect('equal', adjustable='box')
 plt.show()
+
+# Getting Profile:
