@@ -224,6 +224,7 @@ bbox = box(minlon, minlat, maxlon, maxlat)
 
 # insert bbox into a GeoDataFrame:
 geo = gpd.GeoDataFrame({'geometry': bbox}, index=[0], crs=from_epsg(4326))
+# The Brazilian EPSG is different!
 
 # reproject into the same coordinate system as raster data
 geo = geo.to_crs(crs=data.crs.data)
@@ -271,12 +272,13 @@ with rasterio.open(out_tif, 'w', **out_meta) as dest:
 
 clipped = rasterio.open(out_tif)
 clipped_array = clipped.read(1)
-
+import pdb; pdb.set_trace()
 # Visualize data with matplotlib:
 # Plot out data with contour
 fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
-plt.contour(clipped_array[::-1], cmap='terrain', levels=list(range(-500, 1200, 25)))
+plt.contour(clipped_array[::-1], cmap='terrain', levels=list(range(-500,
+            1200, 10)))
 plt.title('Elevation Contours')
 cbar = plt.colorbar()
 plt.gca().set_aspect('equal', adjustable='box')
@@ -284,7 +286,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 # Plot out data with contourf
 fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
-plt.contourf(clipped_array[::-1], cmap='terrain', levels=list(range(-500, 1200, 25)))
+plt.contourf(clipped_array[::-1], cmap='terrain', levels=list(range(-500,
+             1200, 10)))
 plt.title('Elevation Contours')
 cbar = plt.colorbar()
 plt.gca().set_aspect('equal', adjustable='box')
