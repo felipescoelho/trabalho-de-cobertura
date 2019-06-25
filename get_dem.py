@@ -58,7 +58,7 @@ out_tif = 'clipped.tif'
 #     east = rx_coord[1]
 #     west = tx_coord[1]
 
-# bounds = (NORTH, WEST, SOUTH, EAST)
+# bounds = (north, west, south, east)
 bounds = (-22.83, -43.31, -23.01, -43.05)
 
 # Setting valeus for those of the map:
@@ -245,12 +245,6 @@ clipped = rasterio.open(out_tif)
 nodataval = clipped.get_nodatavals()
 clipped_array = clipped.read(1)
 
-# Eliminating nodatavalues:
-if np.any(data_array == nodataval):
-    data_array[data_array == nodataval] = np.nan
-    data_array = data_array[::-1]
-
-import pdb; pdb.set_trace()
 # Visualize data with matplotlib:
 # Plot out data with contour
 fig = plt.figure(figsize=(12, 8))
